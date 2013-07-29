@@ -22,7 +22,6 @@ Gem::Specification.new do |s|
     'rack-test'           => '~> 0.5.7',
     'rspec'               => '~> 2.5.0',
     'mock_redis'          => '~> 0.2.0',
-    'yajl-ruby'           => '~> 0.8.2'
   }.each do |lib, version|
     s.add_development_dependency lib, version
   end
