@@ -21,6 +21,26 @@ module Resque
     alias_method :remove_queue_without_loner_cleanup, :remove_queue
     alias_method :remove_queue, :remove_queue_with_loner_cleanup
 
-  end
+    if defined? Resque::Helpers
+      # Silence our dear warnings…
+      begin
+        old_verbose, $VERBOSE = $VERBOSE, nil
+        helpers = Object.new.extend(Resque::Helpers)
+      ensure
+        $VERBOSE = old_verbose
+      end
 
+      # Provide fallbacks if our Resque doesn't provide
+      # Resque.encode/Resque.decode yet.
+      Resque.respond_to?(:encode) or
+        define_method(:encode) do |*a|
+          helpers.encode(*a)
+        end
+
+      Resque.respond_to?(:decode) or
+        define_method(:decode) do |*a|
+          helpers.decode(*a)
+        end
+    end
+  end
 end

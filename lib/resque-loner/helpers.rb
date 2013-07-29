@@ -2,7 +2,10 @@ module Resque
   module Plugins
     module Loner
       class Helpers
-        extend Resque::Helpers
+        # Direct access to the Redis instance.
+        def self.redis
+          Resque.redis
+        end
 
         def self.loner_queued?(queue, item)
           return false unless item_is_a_unique_job?(item)
@@ -63,7 +66,7 @@ module Resque
           redis_queue = "queue:#{queue}"
 
           redis.lrange(redis_queue, 0, -1).each do |string|
-            json   = decode(string)
+            json   = Resque.decode(string)
 
             match  = json['class'] == klass
             match &= json['args'] == args unless args.empty?
@@ -77,6 +80,53 @@ module Resque
         def self.cleanup_loners(queue)
           keys = redis.keys("loners:queue:#{queue}:job:*")
           redis.del(*keys) unless keys.empty?
+        end
+
+        # Given a word with dashes, returns a camel cased version of it.
+        #
+        # classify('job-name') # => 'JobName'
+        def self.classify(dashed_word)
+          dashed_word.split('-').each { |part| part[0] = part[0].chr.upcase }.join
+        end
+
+        # Tries to find a constant with the name specified in the argument string:
+        #
+        # constantize("Module") # => Module
+        # constantize("Test::Unit") # => Test::Unit
+        #
+        # The name is assumed to be the one of a top-level constant, no matter
+        # whether it starts with "::" or not. No lexical context is taken into
+        # account:
+        #
+        # C = 'outside'
+        # module M
+        #   C = 'inside'
+        #   C # => 'inside'
+        #   constantize("C") # => 'outside', same as ::C
+        # end
+        #
+        # NameError is raised when the constant is unknown.
+        def self.constantize(camel_cased_word)
+          camel_cased_word = camel_cased_word.to_s
+
+          if camel_cased_word.include?('-')
+            camel_cased_word = classify(camel_cased_word)
+          end
+
+          names = camel_cased_word.split('::')
+          names.shift if names.empty? || names.first.empty?
+
+          constant = Object
+          names.each do |name|
+            args = Module.method(:const_get).arity != 1 ? [false] : []
+
+            if constant.const_defined?(name, *args)
+              constant = constant.const_get(name)
+            else
+              constant = constant.const_missing(name)
+            end
+          end
+          constant
         end
 
       end

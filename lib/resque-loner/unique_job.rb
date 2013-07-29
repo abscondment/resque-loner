@@ -10,9 +10,6 @@ module Resque
 
       def self.included(base)
         base.extend         ClassMethods
-        base.class_eval do
-          base.send(:extend, Resque::Helpers)
-        end
       end # self.included
 
       module ClassMethods
@@ -23,14 +20,14 @@ module Resque
         #  On a Resque with no plugins installed, this is a hash containing :class and :args
         #
         def redis_key(payload)
-          payload = decode(encode(payload)) # This is the cycle the data goes when being enqueued/dequeued
+          payload = Resque.decode(Resque.encode(payload)) # This is the cycle the data goes when being enqueued/dequeued
           job  = payload[:class] || payload["class"]
-          args = (payload[:args]  || payload["args"])
+          args = payload[:args]  || payload["args"]
           args.map! do |arg|
             arg.is_a?(Hash) ? arg.sort : arg
           end
 
-          digest = Digest::MD5.hexdigest encode(:class => job, :args => args)
+          digest = Digest::MD5.hexdigest Resque.encode(:class => job, :args => args)
           digest
         end
 
