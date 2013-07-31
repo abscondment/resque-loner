@@ -3,6 +3,9 @@ gemspec
 
 group :development do
   gem 'gemcutter'
+  gem 'ruby-debug', :platform => :mri_18
+  gem 'debugger', :platform => :mri_19
+  gem 'byebug', :platform => :mri_20
 end
 
 group :test do
